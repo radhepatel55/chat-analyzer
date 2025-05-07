@@ -1,0 +1,7 @@
+streamlit
+pytesseract
+Pillow
+pandas
+matplotlib
+transformers
+torch
