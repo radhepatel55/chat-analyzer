@@ -19,8 +19,10 @@ from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
 
 # Download required NLTK resources once
-nltk.download('punkt')
-nltk.download('stopwords')
+nltk.data.path.append('./nltk_data')
+nltk.download('punkt', download_dir='./nltk_data')
+nltk.download('stopwords', download_dir='./nltk_data')
+
 
 def show_popup(message):
     popup = Popup(
