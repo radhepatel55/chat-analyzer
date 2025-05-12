@@ -18,11 +18,17 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
 
-# Download required NLTK resources once
-nltk.data.path.append('./nltk_data')
-nltk.download('punkt', download_dir='./nltk_data')
-nltk.download('stopwords', download_dir='./nltk_data')
+# 1) Tell NLTK where you’re going to store data
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'nltk_data')
+nltk.data.path.append(DATA_DIR)
 
+# 2) Ensure punkt & stopwords are present (download if missing)
+for pkg in ('punkt', 'stopwords'):
+    try:
+        # this will raise LookupError if the pkg isn’t found
+        nltk.data.find(f'tokenizers/{pkg}' if pkg=='punkt' else f'corpora/{pkg}')
+    except LookupError:
+        nltk.download(pkg, download_dir=DATA_DIR)
 
 def show_popup(message):
     popup = Popup(
