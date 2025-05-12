@@ -4,6 +4,7 @@ from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from PIL import Image
@@ -18,27 +19,42 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
 
-# 1) Tell NLTK where you’re going to store data
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'nltk_data')
-nltk.data.path.append(DATA_DIR)
 
-# 2) Ensure punkt & stopwords are present (download if missing)
-for pkg in ('punkt', 'stopwords'):
-    try:
-        # this will raise LookupError if the pkg isn’t found
-        nltk.data.find(f'tokenizers/{pkg}' if pkg=='punkt' else f'corpora/{pkg}')
-    except LookupError:
-        nltk.download(pkg, download_dir=DATA_DIR)
+nltk.download('punkt_tab')
+nltk.download('punkt')
+nltk.download('stopwords')
 
+
+# -----------------------------
+# Popup Helper
+# -----------------------------
 def show_popup(message):
+    # Create a ScrollView to handle long content
+    scroll_view = ScrollView(size_hint=(1, None), size=(400, 400))
+    
+    # Add the message inside a Label
+    content_label = Label(
+        text=message,
+        size_hint_y=None,
+        text_size=(400, None),  # Wrap text within the width of the ScrollView
+        halign="left",
+        valign="top",
+    )
+    content_label.bind(texture_size=content_label.setter('size'))  # Adjust height dynamically
+    scroll_view.add_widget(content_label)
+
+    # Create a popup with the ScrollView
     popup = Popup(
         title="Analysis Result",
-        content=Label(text=message),
-        size_hint=(0.9, 0.6),
+        content=scroll_view,
+        size_hint=(0.9, 0.9),  # Adjust popup size to fit the screen
         auto_dismiss=True
     )
     popup.open()
 
+# -----------------------------
+# Text Extraction
+# -----------------------------
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
     if ext == ".txt":
@@ -59,6 +75,9 @@ def extract_text(file_path):
     else:
         return ""
 
+# -----------------------------
+# Text Analysis
+# -----------------------------
 def analyze_text(text):
     words = nltk.word_tokenize(text)
     words_clean = [w.lower() for w in words if w.isalpha()]
@@ -77,15 +96,21 @@ def analyze_text(text):
         "Top Words": ", ".join(f"{word} ({count})" for word, count in top_words)
     }
 
+# -----------------------------
+# Summarization
+# -----------------------------
 def summarize_text(text, sentence_count=3):
     try:
         parser = PlaintextParser.from_string(text, Tokenizer("english"))
         summarizer = LsaSummarizer()
         summary = summarizer(parser.document, sentence_count)
         return " ".join(str(sentence) for sentence in summary)
-    except:
-        return "Could not generate summary."
+    except Exception as e:
+        return f"Could not generate summary. ({e})"
 
+# -----------------------------
+# File Processing
+# -----------------------------
 def analyze_file(file_path):
     try:
         text = extract_text(file_path)
@@ -95,19 +120,21 @@ def analyze_file(file_path):
         analysis = analyze_text(text)
         summary = summarize_text(text)
 
-        # Format the result for popup
         result = (
-            f"📊 Document Analysis:\n"
+            f"Document Analysis:\n"
             f"- Word Count: {analysis['Word Count']}\n"
             f"- Character Count: {analysis['Character Count']}\n"
             f"- Reading Time: {analysis['Estimated Reading Time (min)']} mins\n"
             f"- Top Words: {analysis['Top Words']}\n\n"
-            f"📝 Summary:\n{summary}"
+            f"Summary:\n{summary}"
         )
         return result
     except Exception as e:
         return f"Error analyzing file: {e}"
 
+# -----------------------------
+# Kivy UI
+# -----------------------------
 def upload_and_analyze(file_chooser):
     selected = file_chooser.selection
     if selected:
@@ -120,8 +147,18 @@ def upload_and_analyze(file_chooser):
 def build_ui():
     layout = BoxLayout(orientation='vertical', spacing=20, padding=10)
 
-    label = Label(text="Select a document or image to analyze", size_hint_y=0.2,
-                  font_size=24, color=(1, 1, 1, 1), bold=True)
+    # Center the label text
+    label = Label(
+        text="Select a document or image to analyze",
+        size_hint_y=0.2,
+        font_size=24,
+        color=(1, 1, 1, 1),
+        bold=True,
+        halign="center",  # Horizontal alignment
+        valign="middle",  # Vertical alignment
+        text_size=(None, None)  # Ensure text wraps properly
+    )
+    label.bind(size=lambda instance, value: setattr(instance, 'text_size', value))  # Dynamically adjust text size
     layout.add_widget(label)
 
     file_chooser = FileChooserIconView()
@@ -140,6 +177,7 @@ def run_app():
     app = App()
     app.build = build_ui
     app.run()
+
 
 if __name__ == "__main__":
     run_app()
